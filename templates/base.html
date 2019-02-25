@@ -11,9 +11,11 @@
 <body>
 
     <div>
-        <a href='/blog'> Main Blog Page </a>
-        <a href='/newpost'> Add a Blog Entry </a>
-        <a href='/logout'> Log Out </a>
+        <a href='/login'>Log In</a>
+        <a href='/'>Home</a>
+        <a href='/logout'>Log Out</a>
+        <a href='/newpost'>New Post</a>
+        <a href='/blog'>Blogs</a>
     </div>
 
     {% with messages = get_flashed_messages(with_categories=True) %}

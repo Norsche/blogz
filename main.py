@@ -3,13 +3,13 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.config['DEBUG'] = True
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://build-a-blog:build-a-blog@localhost:8889/build-a-blog'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://blogz:blogz@localhost:8889/blogz'
 app.config['SQLALCHEMY_ECHO'] = True
 db = SQLAlchemy(app)
 app.secret_key = 'secretkey'
 
 
-class Post(db.Model):
+class Blog(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120))
@@ -27,7 +27,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True)
     password = db.Column(db.String(120))
-    posts = db.relationship('Post', backref='owner')
+    blogs = db.relationship('Blog', backref='owner')
 
     def __init__(self, email, password):
         self.email = email
@@ -35,7 +35,7 @@ class User(db.Model):
 
 @app.before_request
 def require_login():
-    allowed_routes = ['login', 'register']
+    allowed_routes = ['login', 'signup', 'index']
     if request.endpoint not in allowed_routes and 'email' not in session:
         return redirect('/login')
 
@@ -56,8 +56,8 @@ def login():
     return render_template('login.html')
 
 
-@app.route('/register', methods=['POST', 'GET'])
-def register():
+@app.route('/signup', methods=['POST', 'GET'])
+def signup():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
@@ -76,26 +76,35 @@ def register():
             # TODO - user better response messaging
             return "<h1>Duplicate user</h1>"
 
-    return render_template('register.html')
+    return render_template('signup.html')
 
 @app.route('/logout')
 def logout():
     del session['email']
     return redirect('/blog')
 
-@app.route('/blog', methods=['POST', 'GET'])
+@app.route('/blog')
+def blog():
+    posts = Blog.query.all()
+    blog_id = request.args.get('id')
+    user_id = request.args.get('user')
+    
+    if user_id:
+        posts = Blog.query.filter_by(owner_id=user_id)
+        return render_template('user.html', posts=posts, header="User Posts")
+    if blog_id:
+        post = Blog.query.get(blog_id)
+        return render_template('entry.html', post=post )
+
+    return render_template('blog.html', posts=posts, header='All Blog Posts')
+
+@app.route('/', methods=['POST', 'GET'])
 def index():
 
-    owner = User.query.filter_by(email=session['email']).first()
-
-    if request.args:
-        post_id = request.args.get('id')
-        post_content = Post.query.get(post_id)
-        return render_template('blogpost.html', title="Blog Post", post_content=post_content)
+    users = User.query.all()
+    return render_template('index.html', title="Blogz!", users=users)
 
 
-    posts = Post.query.filter_by(owner=owner).all()
-    return render_template('blog.html',title="Build A Blog!", posts=posts)
 
 @app.route('/newpost', methods=['POST', 'GET'])
 def newpost():
@@ -115,7 +124,7 @@ def newpost():
             content_error = 'Please fill in the content.'
         
         if not title_error and not content_error:
-            new_post = Post(post_title, post_content, owner)
+            new_post = Blog(post_title, post_content, owner)
             db.session.add(new_post)
             db.session.commit()
             return redirect('/blog?id='+str(new_post.id))
