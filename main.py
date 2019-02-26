@@ -45,11 +45,13 @@ def login():
         email = request.form['email']
         password = request.form['password']
         user = User.query.filter_by(email=email).first()
+        
+
         if user and user.password == password:
             session['email'] = email
             flash("Logged in")
             print(session)
-            return redirect('/blog')
+            return redirect('/newpost')
         else:
             flash('User password incorrect, or user does not exist', 'error')
 
@@ -58,25 +60,89 @@ def login():
 
 @app.route('/signup', methods=['POST', 'GET'])
 def signup():
+
+    password_error = ''
+    verify_error = ''
+    email_error = ''
+    email = ''
+    password = ''
+    verify = ''
+
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
         verify = request.form['verify']
+        email = request.form['email']
+        password_error = ''
+        verify_error = ''
+        email_error = ''
+
+        if password == '':
+            password_error = "Please enter a valid password."
+            password = ''
+
+        for character in password:
+            if character == ' ':
+                password_error = "Please enter a valid password wth no spaces."
+
+        if verify == '':
+            verify_error = "Plese enter a valid password confirmation."
+            verify = ''
+
+        if len(password) < 3 or len(password) > 20:
+            password_error = "Please enter a password between 3 and 20 characters."
+            password = ''
+
+        if password != verify:
+            verify_error = "Passwords do not match."
+            verify = ''
+
+        if len(email) < 3 or len(email) > 20:
+            email_error = "Please enter an email between 3 and 20 characets."
+        
+        for character in email:
+            if character == '':
+                email_error = "Please enter a valid email address."
+
+        count = 0
+        for character in email:
+            if character == '@':
+                count += 1
+        
+        if count > 1 or count == 0:
+            email_error = "Please enter a valid email address"
+        
+        count = 0
+        for character in email:
+            if character == '.':
+                count += 1
+
+        if count > 1 or count == 0:
+            email_error = "Pleaes enter a valid email address."
+
+        if email == '':
+            email_error = 'Please enter a valid email address.'
 
         # TODO - validate user's data
 
-        existing_user = User.query.filter_by(email=email).first()
-        if not existing_user:
-            new_user = User(email, password)
-            db.session.add(new_user)
-            db.session.commit()
-            session['email'] = email
-            return redirect('/blog')
-        else:
-            # TODO - user better response messaging
-            return "<h1>Duplicate user</h1>"
+        if not password_error and not verify_error and not email_error:
+            existing_user = User.query.filter_by(email=email).first()
+            if not existing_user:
+                new_user = User(email, password)
+                db.session.add(new_user)
+                db.session.commit()
+                session['email'] = email
+                return redirect('/newpost')
 
-    return render_template('signup.html')
+            else:
+                # TODO - user better response messaging
+                return "<h1>Duplicate user</h1>"
+
+        else:
+            return render_template('signup.html', password_error=password_error, verify_error = verify_error, email_error = email_error, password='', verify='', email=email)
+
+    else:
+        return render_template('signup.html', password_error=password_error, verify_error = verify_error, email_error = email_error, password='', verify='', email=email)
 
 @app.route('/logout')
 def logout():
